@@ -35,3 +35,18 @@ class User(Base):
         String(20),
         default="USER"
     )
+
+class Project(Base):
+    __tablename__ = "projects"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    name: Mapped[str] = mapped_column(
+        String(150)
+    )
+
+    description: Mapped[str] = mapped_column(
+        Text
+    )
+
+    created_by: Mapped[int] = mapped_column()

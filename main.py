@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from models import Task as TaskModel, User as UserModel
+from models import Task as TaskModel, User as UserModel, Project as ProjectModel
 from security import hash_password, verify_password, create_access_token, decode_access_token
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
@@ -40,11 +40,11 @@ def get_current_user(
 
     return user
 
-def require_role(required_role: str):
+def require_roles(*allowed_roles: str):
     def role_checker(
         current_user: UserModel = Depends(get_current_user)
     ):
-        if current_user.role != required_role:
+        if current_user.role not in allowed_roles:
             raise HTTPException(
                 status_code=403,
                 detail="You do not have permission"
@@ -91,6 +91,20 @@ class LoginRequest(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str
+
+class ProjectCreate(BaseModel):
+    name: str
+    description: str
+
+
+class ProjectResponse(BaseModel):
+    id: int
+    name: str
+    description: str
+    created_by: int
+
+    class Config:
+        from_attributes = True
 
 @app.get("/")
 def home():
@@ -208,7 +222,7 @@ def register(
     name=user_data.name,
     email=user_data.email,
     password_hash=hash_password(user_data.password),
-    role=user_data.role
+    role="USER"
     )
 
     db.add(new_user)
@@ -257,10 +271,34 @@ def get_me(
 @app.get("/admin/test")
 def admin_test(
     current_user: UserModel = Depends(
-        require_role("ADMIN")
+        require_roles("ADMIN", "MANAGER")
     )
 ):
     return {
-        "message": "Welcome Admin",
-        "user": current_user.name
+        "message": "You have access",
+        "user": current_user.name,
+        "role": current_user.role
     }
+
+@app.post(
+    "/projects",
+    response_model=ProjectResponse
+)
+def create_project(
+    project_data: ProjectCreate,
+    current_user: UserModel = Depends(
+        require_roles("ADMIN", "MANAGER")
+    ),
+    db: Session = Depends(get_db)
+):
+    new_project = ProjectModel(
+        name=project_data.name,
+        description=project_data.description,
+        created_by=current_user.id
+    )
+
+    db.add(new_project)
+    db.commit()
+    db.refresh(new_project)
+
+    return new_project
