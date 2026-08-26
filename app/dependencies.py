@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from .database import get_db
 from .models import User
 from .security import decode_access_token
+from .permissions import PERMISSIONS
 
 
 security = HTTPBearer()
@@ -21,6 +22,7 @@ def get_current_user(
 
     try:
         user_id = decode_access_token(token)
+
     except ValueError:
         raise HTTPException(
             status_code=401,
@@ -53,3 +55,23 @@ def require_roles(*allowed_roles: str):
         return current_user
 
     return role_checker
+
+
+def require_permission(permission: str):
+    def permission_checker(
+        current_user: User = Depends(get_current_user)
+    ):
+        user_permissions = PERMISSIONS.get(
+            current_user.role,
+            set()
+        )
+
+        if permission not in user_permissions:
+            raise HTTPException(
+                status_code=403,
+                detail="You do not have this permission"
+            )
+
+        return current_user
+
+    return permission_checker

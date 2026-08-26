@@ -164,3 +164,114 @@ def test_project_not_found(
     )
 
     assert response.status_code == 404
+
+def test_manager_cannot_delete_project(
+    client,
+    create_user,
+    get_token
+):
+    manager = create_user(
+        "Manager",
+        "manager@example.com",
+        role="MANAGER"
+    )
+
+    token = get_token(
+        "manager@example.com",
+        "password123"
+    )
+
+    # We need an ADMIN to create the project first.
+    admin = create_user(
+        "Admin",
+        "admin@example.com",
+        role="ADMIN"
+    )
+
+    admin_token = get_token(
+        "admin@example.com",
+        "password123"
+    )
+
+    response = client.post(
+        "/projects/",
+        headers={
+            "Authorization": f"Bearer {admin_token}"
+        },
+        json={
+            "name": "Protected Project",
+            "description": "Testing permissions"
+        }
+    )
+
+    assert response.status_code == 200
+
+    project_id = response.json()["id"]
+
+    # Manager tries to delete it.
+    response = client.delete(
+        f"/projects/{project_id}",
+        headers={
+            "Authorization": f"Bearer {token}"
+        }
+    )
+
+    assert response.status_code == 403
+
+def test_manager_can_create_project(
+    client,
+    create_user,
+    get_token
+):
+    create_user(
+        "Manager",
+        "manager@example.com",
+        role="MANAGER"
+    )
+
+    token = get_token(
+        "manager@example.com",
+        "password123"
+    )
+
+    response = client.post(
+        "/projects/",
+        headers={
+            "Authorization": f"Bearer {token}"
+        },
+        json={
+            "name": "Manager Project",
+            "description": "Created by manager"
+        }
+    )
+
+    assert response.status_code == 200
+
+def test_manager_can_create_project(
+    client,
+    create_user,
+    get_token
+):
+    create_user(
+        "Manager",
+        "manager@example.com",
+        role="MANAGER"
+    )
+
+    token = get_token(
+        "manager@example.com",
+        "password123"
+    )
+
+    response = client.post(
+        "/projects/",
+        headers={
+            "Authorization": f"Bearer {token}"
+        },
+        json={
+            "name": "Manager Project",
+            "description": "Created by manager"
+        }
+    )
+
+    assert response.status_code == 200

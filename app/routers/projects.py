@@ -2,9 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..models import Project as ProjectModel, User as UserModel
+from ..models import Project as ProjectModel
+from ..models import User as UserModel
 from ..schemas import ProjectCreate, ProjectResponse
-from ..dependencies import get_current_user, require_roles
+from ..dependencies import (
+    get_current_user,
+    require_permission
+)
 
 
 router = APIRouter(
@@ -17,7 +21,7 @@ router = APIRouter(
 def create_project(
     project_data: ProjectCreate,
     current_user: UserModel = Depends(
-        require_roles("ADMIN", "MANAGER")
+        require_permission("projects.create")
     ),
     db: Session = Depends(get_db)
 ):
@@ -36,7 +40,9 @@ def create_project(
 
 @router.get("/", response_model=list[ProjectResponse])
 def get_projects(
-    current_user: UserModel = Depends(get_current_user),
+    current_user: UserModel = Depends(
+        require_permission("projects.read")
+    ),
     db: Session = Depends(get_db)
 ):
     return db.query(ProjectModel).all()
@@ -45,7 +51,9 @@ def get_projects(
 @router.get("/{project_id}", response_model=ProjectResponse)
 def get_project(
     project_id: int,
-    current_user: UserModel = Depends(get_current_user),
+    current_user: UserModel = Depends(
+        require_permission("projects.read")
+    ),
     db: Session = Depends(get_db)
 ):
     project = db.query(ProjectModel).filter(
@@ -66,7 +74,7 @@ def update_project(
     project_id: int,
     project_data: ProjectCreate,
     current_user: UserModel = Depends(
-        require_roles("ADMIN", "MANAGER")
+        require_permission("projects.update")
     ),
     db: Session = Depends(get_db)
 ):
@@ -93,7 +101,7 @@ def update_project(
 def delete_project(
     project_id: int,
     current_user: UserModel = Depends(
-        require_roles("ADMIN")
+        require_permission("projects.delete")
     ),
     db: Session = Depends(get_db)
 ):

@@ -1,7 +1,23 @@
-from sqlalchemy import String, Text, ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import String, Text, ForeignKey, Table, Column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
+
+
+project_members = Table(
+    "project_members",
+    Base.metadata,
+    Column(
+        "project_id",
+        ForeignKey("projects.id", ondelete="CASCADE"),
+        primary_key=True
+    ),
+    Column(
+        "user_id",
+        ForeignKey("users.id", ondelete="CASCADE"),
+        primary_key=True
+    )
+)
 
 
 class Task(Base):
@@ -35,6 +51,7 @@ class Task(Base):
         default="MEDIUM"
     )
 
+
 class User(Base):
     __tablename__ = "users"
 
@@ -59,6 +76,13 @@ class User(Base):
         default="USER"
     )
 
+    projects: Mapped[list["Project"]] = relationship(
+        "Project",
+        secondary=project_members,
+        back_populates="members"
+    )
+
+
 class Project(Base):
     __tablename__ = "projects"
 
@@ -73,3 +97,9 @@ class Project(Base):
     )
 
     created_by: Mapped[int] = mapped_column()
+
+    members: Mapped[list["User"]] = relationship(
+        "User",
+        secondary=project_members,
+        back_populates="projects"
+    )

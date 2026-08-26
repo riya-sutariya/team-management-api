@@ -2,9 +2,20 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..models import Task as TaskModel, User as UserModel, Project as ProjectModel
-from ..schemas import TaskCreate, TaskResponse, TaskStatus
-from ..dependencies import get_current_user, require_roles
+from ..models import (
+    Task as TaskModel,
+    User as UserModel,
+    Project as ProjectModel
+)
+from ..schemas import (
+    TaskCreate,
+    TaskResponse,
+    TaskStatus
+)
+from ..dependencies import (
+    get_current_user,
+    require_permission
+)
 
 
 router = APIRouter(
@@ -15,7 +26,9 @@ router = APIRouter(
 
 @router.get("/my", response_model=list[TaskResponse])
 def get_my_tasks(
-    current_user: UserModel = Depends(get_current_user),
+    current_user: UserModel = Depends(
+        require_permission("tasks.read")
+    ),
     db: Session = Depends(get_db)
 ):
     return db.query(TaskModel).filter(
@@ -25,7 +38,9 @@ def get_my_tasks(
 
 @router.get("/", response_model=list[TaskResponse])
 def get_tasks(
-    current_user: UserModel = Depends(get_current_user),
+    current_user: UserModel = Depends(
+        require_permission("tasks.read")
+    ),
     db: Session = Depends(get_db)
 ):
     return db.query(TaskModel).all()
@@ -35,7 +50,7 @@ def get_tasks(
 def create_task(
     task: TaskCreate,
     current_user: UserModel = Depends(
-        require_roles("ADMIN", "MANAGER")
+        require_permission("tasks.create")
     ),
     db: Session = Depends(get_db)
 ):
@@ -78,7 +93,9 @@ def create_task(
 @router.get("/{task_id}", response_model=TaskResponse)
 def get_task(
     task_id: int,
-    current_user: UserModel = Depends(get_current_user),
+    current_user: UserModel = Depends(
+        require_permission("tasks.read")
+    ),
     db: Session = Depends(get_db)
 ):
     task = db.query(TaskModel).filter(
@@ -117,7 +134,53 @@ def update_my_task_status(
             detail="You can only update your own tasks"
         )
 
+    if "tasks.update_own" not in __import__(
+        "app.permissions",
+        fromlist=["PERMISSIONS"]
+    ).PERMISSIONS.get(current_user.role, set()):
+        raise HTTPException(
+            status_code=403,
+            detail="You do not have permission"
+        )
+
     task.status = status.value
+
+    db.commit()
+    db.refresh(task)
+
+    return task
+
+
+@router.put("/{task_id}/assign", response_model=TaskResponse)
+def assign_task(
+    task_id: int,
+    assigned_to: int,
+    current_user: UserModel = Depends(
+        require_permission("tasks.assign")
+    ),
+    db: Session = Depends(get_db)
+):
+    task = db.query(TaskModel).filter(
+        TaskModel.id == task_id
+    ).first()
+
+    if not task:
+        raise HTTPException(
+            status_code=404,
+            detail="Task not found"
+        )
+
+    user = db.query(UserModel).filter(
+        UserModel.id == assigned_to
+    ).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail="User not found"
+        )
+
+    task.assigned_to = assigned_to
 
     db.commit()
     db.refresh(task)
