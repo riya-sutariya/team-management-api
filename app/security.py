@@ -1,12 +1,19 @@
 from datetime import datetime, timedelta, timezone
-
+import secrets
+import os
+import hashlib
 import jwt
 from pwdlib import PasswordHash
 
 
 password_hash = PasswordHash.recommended()
 
-SECRET_KEY = "change-this-secret-key"
+
+SECRET_KEY = os.getenv(
+    "SECRET_KEY",
+    "development-only-secret-key"
+)
+
 ALGORITHM = "HS256"
 
 
@@ -25,7 +32,9 @@ def verify_password(
 
 
 def create_access_token(user_id: int) -> str:
-    expire = datetime.now(timezone.utc) + timedelta(minutes=30)
+    expire = datetime.now(timezone.utc) + timedelta(
+        minutes=30
+    )
 
     payload = {
         "sub": str(user_id),
@@ -37,6 +46,7 @@ def create_access_token(user_id: int) -> str:
         SECRET_KEY,
         algorithm=ALGORITHM
     )
+
 
 def decode_access_token(token: str) -> int:
     try:
@@ -58,3 +68,16 @@ def decode_access_token(token: str) -> int:
 
     except jwt.InvalidTokenError:
         raise ValueError("Invalid token")
+
+
+def create_refresh_token() -> str:
+    return secrets.token_urlsafe(64)
+
+
+def get_refresh_token_expiry() -> datetime:
+    return datetime.utcnow() + timedelta(days=7)
+
+def hash_refresh_token(token: str) -> str:
+    return hashlib.sha256(
+        token.encode("utf-8")
+    ).hexdigest()

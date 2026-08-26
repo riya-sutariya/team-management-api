@@ -40,6 +40,7 @@ def test_login(client):
     data = response.json()
 
     assert "access_token" in data
+    assert "refresh_token" in data
     assert data["token_type"] == "bearer"
 
 def test_login_wrong_password(client):
@@ -110,6 +111,94 @@ def test_get_current_user_invalid_token(client):
         "/auth/me",
         headers={
             "Authorization": "Bearer invalid-token"
+        }
+    )
+
+    assert response.status_code == 401
+
+def test_refresh_token(client):
+    client.post(
+        "/auth/register",
+        json={
+            "name": "Refresh User",
+            "email": "refresh@example.com",
+            "password": "password123"
+        }
+    )
+
+    login_response = client.post(
+        "/auth/login",
+        json={
+            "email": "refresh@example.com",
+            "password": "password123"
+        }
+    )
+
+    assert login_response.status_code == 200
+
+    refresh_token = login_response.json()["refresh_token"]
+
+    response = client.post(
+        "/auth/refresh",
+        json={
+            "refresh_token": refresh_token
+        }
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert "access_token" in data
+    assert data["token_type"] == "bearer"
+
+def test_refresh_token_rotation(client):
+    client.post(
+        "/auth/register",
+        json={
+            "name": "Rotation User",
+            "email": "rotation@example.com",
+            "password": "password123"
+        }
+    )
+
+    login_response = client.post(
+        "/auth/login",
+        json={
+            "email": "rotation@example.com",
+            "password": "password123"
+        }
+    )
+
+    assert login_response.status_code == 200
+
+    old_refresh_token = (
+        login_response.json()["refresh_token"]
+    )
+
+    response = client.post(
+        "/auth/refresh",
+        json={
+            "refresh_token": old_refresh_token
+        }
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert "access_token" in data
+    assert "refresh_token" in data
+
+    new_refresh_token = data["refresh_token"]
+
+    assert new_refresh_token != old_refresh_token
+
+    # Old refresh token must no longer work.
+    response = client.post(
+        "/auth/refresh",
+        json={
+            "refresh_token": old_refresh_token
         }
     )
 

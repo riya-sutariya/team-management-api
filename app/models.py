@@ -1,6 +1,6 @@
 from sqlalchemy import String, Text, ForeignKey, Table, Column
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-
+from datetime import datetime
 from .database import Base
 
 
@@ -102,4 +102,25 @@ class Project(Base):
         "User",
         secondary=project_members,
         back_populates="projects"
+    )
+
+class RefreshToken(Base):
+    __tablename__ = "refresh_tokens"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    token_hash: Mapped[str] = mapped_column(
+        String(255),
+        unique=True,
+        index=True
+    )
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE")
+    )
+
+    expires_at: Mapped[datetime]
+
+    revoked: Mapped[bool] = mapped_column(
+        default=False
     )

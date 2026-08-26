@@ -75,3 +75,29 @@ def require_permission(permission: str):
         return current_user
 
     return permission_checker
+
+def require_project_member(
+    project_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    from .models import Project
+
+    project = db.query(Project).filter(
+        Project.id == project_id
+    ).first()
+
+    if not project:
+        raise HTTPException(
+            status_code=404,
+            detail="Project not found"
+        )
+
+    if current_user not in project.members:
+        if current_user.role not in ["ADMIN", "MANAGER"]:
+            raise HTTPException(
+                status_code=403,
+                detail="You are not a member of this project"
+            )
+
+    return project

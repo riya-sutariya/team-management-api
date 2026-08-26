@@ -275,3 +275,188 @@ def test_manager_can_create_project(
     )
 
     assert response.status_code == 200
+
+def test_project_membership(
+    client,
+    create_user,
+    get_token
+):
+    admin = create_user(
+        "Admin",
+        "admin@example.com",
+        role="ADMIN"
+    )
+
+    user = create_user(
+        "Riya",
+        "riya@example.com"
+    )
+
+    admin_token = get_token(
+        "admin@example.com",
+        "password123"
+    )
+
+    headers = {
+        "Authorization": f"Bearer {admin_token}"
+    }
+
+    # Create project
+    response = client.post(
+        "/projects/",
+        headers=headers,
+        json={
+            "name": "Team Project",
+            "description": "Project with members"
+        }
+    )
+
+    assert response.status_code == 200
+
+    project_id = response.json()["id"]
+
+    # Add member
+    response = client.post(
+        f"/projects/{project_id}/members/{user.id}",
+        headers=headers
+    )
+
+    assert response.status_code == 200
+
+    # Get members
+    response = client.get(
+        f"/projects/{project_id}/members",
+        headers=headers
+    )
+
+    assert response.status_code == 200
+
+    members = response.json()
+
+    assert len(members) == 1
+    assert members[0]["id"] == user.id
+    assert members[0]["email"] == "riya@example.com"
+
+    # Remove member
+    response = client.delete(
+        f"/projects/{project_id}/members/{user.id}",
+        headers=headers
+    )
+
+    assert response.status_code == 200
+
+    # Verify removed
+    response = client.get(
+        f"/projects/{project_id}/members",
+        headers=headers
+    )
+
+    assert response.status_code == 200
+    assert response.json() == []
+
+def test_non_member_cannot_view_project(
+    client,
+    create_user,
+    get_token
+):
+    admin = create_user(
+        "Admin",
+        "admin@example.com",
+        role="ADMIN"
+    )
+
+    user = create_user(
+        "Riya",
+        "riya@example.com"
+    )
+
+    admin_token = get_token(
+        "admin@example.com",
+        "password123"
+    )
+
+    response = client.post(
+        "/projects/",
+        headers={
+            "Authorization": f"Bearer {admin_token}"
+        },
+        json={
+            "name": "Private Project",
+            "description": "Members only"
+        }
+    )
+
+    assert response.status_code == 200
+
+    project_id = response.json()["id"]
+
+    user_token = get_token(
+        "riya@example.com",
+        "password123"
+    )
+
+    response = client.get(
+        f"/projects/{project_id}",
+        headers={
+            "Authorization": f"Bearer {user_token}"
+        }
+    )
+
+    assert response.status_code == 403
+
+def test_project_member_can_view_project(
+    client,
+    create_user,
+    get_token
+):
+    admin = create_user(
+        "Admin",
+        "admin2@example.com",
+        role="ADMIN"
+    )
+
+    user = create_user(
+        "Riya",
+        "riya2@example.com"
+    )
+
+    admin_token = get_token(
+        "admin2@example.com",
+        "password123"
+    )
+
+    response = client.post(
+        "/projects/",
+        headers={
+            "Authorization": f"Bearer {admin_token}"
+        },
+        json={
+            "name": "Team Project",
+            "description": "Team members"
+        }
+    )
+
+    project_id = response.json()["id"]
+
+    # Add Riya
+    client.post(
+        f"/projects/{project_id}/members/{user.id}",
+        headers={
+            "Authorization": f"Bearer {admin_token}"
+        }
+    )
+
+    user_token = get_token(
+        "riya2@example.com",
+        "password123"
+    )
+
+    response = client.get(
+        f"/projects/{project_id}",
+        headers={
+            "Authorization": f"Bearer {user_token}"
+        }
+    )
+
+    assert response.status_code == 200
+    assert response.json()["id"] == project_id

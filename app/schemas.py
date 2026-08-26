@@ -37,6 +37,14 @@ class TaskResponse(BaseModel):
         from_attributes = True
 
 
+class TaskListResponse(BaseModel):
+    items: list[TaskResponse]
+    total: int
+    page: int
+    limit: int
+    pages: int
+
+
 class UserCreate(BaseModel):
     name: str
     email: str
@@ -60,7 +68,11 @@ class LoginRequest(BaseModel):
 
 class TokenResponse(BaseModel):
     access_token: str
+    refresh_token: str
     token_type: str
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
 
 
 class ProjectCreate(BaseModel):
