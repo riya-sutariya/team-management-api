@@ -203,3 +203,13 @@ def test_refresh_token_rotation(client):
     )
 
     assert response.status_code == 401
+
+def test_invalid_refresh_token(client):
+    response = client.post(
+        "/auth/refresh",
+        json={
+            "refresh_token": "completely-invalid-token"
+        }
+    )
+
+    assert response.status_code == 401
