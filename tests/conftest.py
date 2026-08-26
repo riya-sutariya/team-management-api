@@ -8,6 +8,8 @@ from sqlalchemy.pool import StaticPool
 
 from app.main import app
 from app.database import Base, get_db
+from app.models import User
+from app.security import hash_password
 
 
 TEST_DATABASE_URL = "sqlite://"
@@ -50,3 +52,42 @@ def client(db: Session) -> Generator[TestClient, None, None]:
         yield test_client
 
     app.dependency_overrides.clear()
+
+@pytest.fixture
+def create_user(db):
+    def _create_user(
+        name,
+        email,
+        role="USER",
+        password="password123"
+    ):
+        user = User(
+            name=name,
+            email=email,
+            password_hash=hash_password(password),
+            role=role
+        )
+
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        return user
+
+    return _create_user
+
+@pytest.fixture
+def get_token(client):
+    def _get_token(email, password="password123"):
+        response = client.post(
+            "/auth/login",
+            json={
+                "email": email,
+                "password": password
+            }
+        )
+
+        return response.json()["access_token"]
+
+    return _get_token
+
