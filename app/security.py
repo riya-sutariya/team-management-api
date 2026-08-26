@@ -9,10 +9,12 @@ from pwdlib import PasswordHash
 password_hash = PasswordHash.recommended()
 
 
-SECRET_KEY = os.getenv(
-    "SECRET_KEY",
-    "development-only-secret-key"
-)
+SECRET_KEY = os.getenv("SECRET_KEY")
+
+if not SECRET_KEY:
+    raise RuntimeError(
+        "SECRET_KEY environment variable is not set"
+    )
 
 ALGORITHM = "HS256"
 

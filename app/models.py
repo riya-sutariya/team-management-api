@@ -96,7 +96,9 @@ class Project(Base):
         Text
     )
 
-    created_by: Mapped[int] = mapped_column()
+    created_by: Mapped[int] = mapped_column(
+    ForeignKey("users.id")
+)
 
     members: Mapped[list["User"]] = relationship(
         "User",

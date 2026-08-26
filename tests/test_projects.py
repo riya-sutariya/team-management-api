@@ -247,35 +247,6 @@ def test_manager_can_create_project(
 
     assert response.status_code == 200
 
-def test_manager_can_create_project(
-    client,
-    create_user,
-    get_token
-):
-    create_user(
-        "Manager",
-        "manager@example.com",
-        role="MANAGER"
-    )
-
-    token = get_token(
-        "manager@example.com",
-        "password123"
-    )
-
-    response = client.post(
-        "/projects/",
-        headers={
-            "Authorization": f"Bearer {token}"
-        },
-        json={
-            "name": "Manager Project",
-            "description": "Created by manager"
-        }
-    )
-
-    assert response.status_code == 200
-
 def test_project_membership(
     client,
     create_user,

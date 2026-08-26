@@ -135,6 +135,12 @@ def create_task(
             detail="Assigned user not found"
         )
 
+    if user not in project.members:
+        raise HTTPException(
+            status_code=400,
+            detail="Assigned user is not a member of this project"
+        )
+
     new_task = TaskModel(
         title=task.title,
         description=task.description,
@@ -254,6 +260,16 @@ def assign_task(
             detail="Task not found"
         )
 
+    project = db.query(ProjectModel).filter(
+        ProjectModel.id == task.project_id
+    ).first()
+
+    if not project:
+        raise HTTPException(
+            status_code=404,
+            detail="Project not found"
+        )
+
     user = db.query(UserModel).filter(
         UserModel.id == assigned_to
     ).first()
@@ -262,6 +278,12 @@ def assign_task(
         raise HTTPException(
             status_code=404,
             detail="User not found"
+        )
+
+    if user not in project.members:
+        raise HTTPException(
+            status_code=400,
+            detail="Assigned user is not a member of this project"
         )
 
     task.assigned_to = assigned_to

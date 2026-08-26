@@ -45,7 +45,16 @@ def get_projects(
     ),
     db: Session = Depends(get_db)
 ):
-    return project_service.get_projects(db)
+    projects = project_service.get_projects(db)
+
+    if current_user.role in ["ADMIN", "MANAGER"]:
+        return projects
+
+    return [
+        project
+        for project in projects
+        if current_user in project.members
+    ]
 
 
 @router.get("/{project_id}", response_model=ProjectResponse)
